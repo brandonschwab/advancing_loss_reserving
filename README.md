@@ -16,7 +16,7 @@ The accurate estimation of loss reserves is critical for the financial health of
 
 ## Project structure
 
-- To demonstrate the application of the proposed model, we use the synthetic dataset used by Chaoubi et al. (2022).
+- To demonstrate the application of the proposed model, we use the synthetic dataset used by Chaoubi et al. (2021).
 - The complete modeling pipeline is stored in the file model_pipeline.py
 
 ## References
