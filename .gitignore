@@ -3,4 +3,4 @@
 .RData
 .Ruserdata
 .venv
-__pycache__
+__pycache__/
