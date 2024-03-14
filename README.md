@@ -13,3 +13,12 @@ The accurate estimation of loss reserves is critical for the financial health of
 
   ```bash
   pip install -r requirements.txt
+
+## Project structure
+
+- To demonstrate the application of the proposed model, we use the synthetic dataset used by Chaoubi et al. (2022).
+- The complete modeling pipeline is stored in the file model_pipeline.py
+
+## References
+* Schwab, B., Schneider, J. C. (2024). Advancing Loss Reserving: A Hybrid Neural Network Approach for Individual Claim Development Prediction.
+* Chaoubi, I., Besse, C. Cossette, H. & M.-P. Côté (2021). Micro-level Reserving for General Insurance Claims using a Long Short-Term Memory Network.
