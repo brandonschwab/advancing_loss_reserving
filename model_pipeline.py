@@ -146,16 +146,16 @@ ray.shutdown()
 
 best_hyper = {
     "n_inputs": len(num_vars) + 1,
-    "hidden_size_static": 64,
-    "hidden_size_lstm": 128,
-    "hidden_size_comb": 32,
+    "hidden_size_static": 128,
+    "hidden_size_lstm": 64,
+    "hidden_size_comb": 128,
     "n_static_nums": n_nums_static,
     "num_layers": 1,
     "cat_sizes": cat_sizes,
     "embed_dims": embed_dims,
-    "dropout": 0.1,
-    "batch": 4096,
-    "lr": 0.001,
+    "dropout": 0.3,
+    "batch": 2048,
+    "lr": 0.0044,
     "weight_decay": 0.0001,
     "step_size": 100,
     "epochs": 30,
@@ -163,7 +163,7 @@ best_hyper = {
     'alpha': 0.5
 }
 
-net = train_model(best_hyper, train_df=train_df_expand, val_df=val_df_expand, tune=False, return_model=True, target='cum_loss', incr=False, zero_col='zero_amount', num_workers=1)    
+net = train_model(best_hyper, train_df=train_df_expand, val_df=val_df_expand, tune=False, return_model=True, target='cum_loss', incr=False, zero_col='zero_amount', num_workers=32)    
 
 ## Use the model to predict the training and validation set ##
 
@@ -254,21 +254,19 @@ p = val_pred_df.query('final_pred == final_pred').pivot_table(index='ay', column
 ## Fit model to train- and validation set ##
 
 # Scaling the complete training data 
-train_val = pd.concat((train_df, val_df))
-num_scalers = get_standard_scalers(train_val, target + num_vars_static + num_vars)
-final_train_df = apply_scaling(train_val, num_scalers)
+num_scalers = get_standard_scalers(training_data, target + num_vars_static + num_vars)
+final_train_df = apply_scaling(training_data, num_scalers)
 
 # Now expand the time series to construct the model in a more readable way
-final_train_df_expand = parallelize_expand_df(final_train_df, process_chunk_expand, n_cores=64, id='ClNr')
+final_train_df_expand = final_train_df.groupby("ClNr")[final_train_df.columns].apply(expand_time_series).reset_index(drop=True)
 final_train_df_expand['ClNr_sub'] = final_train_df_expand['ClNr_sub'].factorize()[0].astype("int")
 
 # Train the model based on trainin and validation set
-final_net = fit_model(best_hyper, train_df=final_train_df_expand, num_workers=76)
+final_net = fit_model(best_hyper, train_df=final_train_df_expand, num_workers=36)
 
 # Fill up the test triangle
-square = triangle[triangle.ClNr.isin(test.ClNr)].copy()
+square = triangle.copy(deep=True)
 square.pivot_table(index='ay', columns='dev_year', values='cum_loss', aggfunc='sum', fill_value=np.nan)
-test = df[df.ClNr.isin(test.ClNr)].copy()
 
 max_ay = square['ay'].max()
 min_ay = square['ay'].min()
@@ -291,8 +289,7 @@ for year in range(1,max_ay+1):
         # fill up all sequences with ay = 1 -> need one prediciton
         subset = square[square['ay'] == year]
         
-
-        preds = predict(df=subset, net=net, target='cum_loss', id_col='ClNr', batch=4096, num_workers=1, rm_last_val=False)
+        preds = predict(df=subset, net=final_net, target='cum_loss', id_col='ClNr', batch=4096, num_workers=1, rm_last_val=False)
 
         preds[['pred_reg', 'pred_clf', 'last_val']] = preds[['pred_reg', 'pred_clf', 'last_val']].astype(float)
         preds[['ClNr', 'dev_year']] = preds[['ClNr', 'dev_year']].astype(int)
@@ -321,16 +318,16 @@ square['pred_reg'] = num_scalers['cum_loss'].inverse_transform(square[['pred_reg
 
 # Aggregated results
 preds_agg = square.pivot_table(index='ay', columns='dev_year', values='cum_loss', aggfunc='sum', fill_value=np.nan)
-true_agg = test.pivot_table(index='ay', columns='dev_year', values='cum_loss', aggfunc='sum', fill_value=np.nan)
+true_agg = df.pivot_table(index='ay', columns='dev_year', values='cum_loss', aggfunc='sum', fill_value=np.nan)
 (preds_agg - true_agg) / true_agg
 
-t = test.query("dev_year == 11").cum_loss.sum() 
+t = df.query("dev_year == 11").cum_loss.sum() 
 p = square.query("dev_year == 11").cum_loss.sum() 
 p/t
 
 # Save models
-# torch.save(final_net, '/home/h067341/rsp-projects/ap.nn_loss_reserving/nn_loss_reserving/custom/models/full_model_f')
-# torch.save(final_net.state_dict(), '/home/h067341/rsp-projects/ap.nn_loss_reserving/nn_loss_reserving/custom/models/full_model_f_dict.pth')
+# torch.save(final_net, 'full_model')
+# torch.save(final_net.state_dict(), 'full_model_dict.pth')
 
-# torch.save(net, '/home/h067341/rsp-projects/ap.nn_loss_reserving/nn_loss_reserving/custom/models/train_model_f')
-# torch.save(net.state_dict(), '/home/h067341/rsp-projects/ap.nn_loss_reserving/nn_loss_reserving/custom/models/train_model_f_dict.pth')
+# torch.save(net, 'train_model')
+# torch.save(net.state_dict(), 'train_model_dict.pth')

@@ -522,7 +522,8 @@ def predict(df, net, id_col='ClNr_sub', target='cum_loss',
             cat_vars=['LoB', 'cc', 'inj_part'],
             batch = 4,
             num_workers=1,
-            rm_last_val=True):
+            rm_last_val=True,
+            device=torch.device("cpu")):
     
     train_set = ClaimsDataset(df, id_cols = id_col, features = num_vars + num_vars_static + cat_vars, target=target, time_col="dev_year", incr=False, zero_col='zero_amount', rm_last_val=rm_last_val)
     train_loader = DataLoader(train_set, batch_size=batch, shuffle=False, collate_fn=collate_fn, num_workers=num_workers, pin_memory=True)
